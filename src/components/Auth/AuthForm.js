@@ -1,39 +1,41 @@
 import { useState, useRef, useContext } from "react";
-import {useHistory} from 'react-router-dom'
-import AuthContext from '../../store/auth-context'
+import { useHistory } from "react-router-dom";
+
+import AuthContext from "../../store/auth-context";
 import classes from "./AuthForm.module.css";
 
 const AuthForm = () => {
-  const passwordInputRef = useRef();
-  const emailInputRef = useRef();
   const history = useHistory();
+  const emailInputRef = useRef();
+  const passwordInputRef = useRef();
+
+  const authCtx = useContext(AuthContext);
 
   const [isLogin, setIsLogin] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
-
-  const authCtx = useContext(AuthContext)
 
   const switchAuthModeHandler = () => {
     setIsLogin((prevState) => !prevState);
   };
 
-  const submitHandler = (e) => {
-    e.preventDefault();
+  const submitHandler = (event) => {
+    event.preventDefault();
 
     const enteredEmail = emailInputRef.current.value;
     const enteredPassword = passwordInputRef.current.value;
 
-    // authetication check
-    let url;
-    setIsLoading(true);
-    if (isLogin) {
-      url =
-        "https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=AIzaSyAVncISV0WpRS0N1gbNe2O1TW36RLipeu0";
-    } else {
-      url =
-        " https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=AIzaSyAVncISV0WpRS0N1gbNe2O1TW36RLipeu0";
-    }
+    // optional: Add validation
 
+    setIsLoading(true);
+   let url;
+   setIsLoading(true);
+   if (isLogin) {
+     url =
+       "https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=AIzaSyAVncISV0WpRS0N1gbNe2O1TW36RLipeu0";
+   } else {
+     url =
+       " https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=AIzaSyAVncISV0WpRS0N1gbNe2O1TW36RLipeu0";
+   }
     fetch(url, {
       method: "POST",
       body: JSON.stringify({
@@ -42,7 +44,7 @@ const AuthForm = () => {
         returnSecureToken: true,
       }),
       headers: {
-        "content-type": "application/json",
+        "Content-Type": "application/json",
       },
     })
       .then((res) => {
@@ -51,17 +53,24 @@ const AuthForm = () => {
           return res.json();
         } else {
           return res.json().then((data) => {
-            let errorMessage = JSON.stringify(data.error.message);
+            let errorMessage = "Authentication failed!";
+            // if (data && data.error && data.error.message) {
+            //   errorMessage = data.error.message;
+            // }
+
             throw new Error(errorMessage);
           });
         }
       })
       .then((data) => {
-        authCtx.login(data.idToken)
-        history.replace('/')
+        const expirationTime = new Date(
+          new Date().getTime() + +data.expiresIn * 1000
+        );
+        authCtx.login(data.idToken, expirationTime.toISOString());
+        history.replace("/");
       })
-      .catch((error) => {
-        alert(error.message);
+      .catch((err) => {
+        alert(err.message);
       });
   };
 
